@@ -1,3 +1,4 @@
+// App.jsx
 import { useEffect, useState } from "react";
 import axios from "axios";
 import queue from "./concurrencyQueue";
@@ -15,11 +16,10 @@ export default function App() {
   const [allExpanded, setAllExpanded] = useState(false);
   const [listLoading, setListLoading] = useState(false);
   const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false); // global app overlay state
+  const [busy, setBusy] = useState(false);
 
-  // Listen to queue state (active/pending)
+  // Listen to queue state to show/hide overlay (light debounce to avoid flickering)
   useEffect(() => {
-    // (optional) light debounce to avoid overlay flashing on very fast requests
     let t;
     const unsub = queue.subscribe(({ active }) => {
       clearTimeout(t);
@@ -31,6 +31,7 @@ export default function App() {
     };
   }, []);
 
+  // Fetch list
   useEffect(() => {
     let canceled = false;
     setListLoading(true);
@@ -65,7 +66,7 @@ export default function App() {
 
   return (
     <div style={{ maxWidth: 720, margin: "40px auto", fontFamily: "sans-serif" }}>
-      {/* Global app overlay */}
+      {/* App-wide overlay */}
       <LoadingOverlay show={busy} text="Loading data…" />
 
       <h1>Users List</h1>

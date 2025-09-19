@@ -1,18 +1,28 @@
+// concurrencyQueue.js
+// Queue that limits concurrent running tasks + emits state change events.
+// Shared across the entire app (singleton).
+
 class ConcurrencyQueue {
   constructor(limit = 2) {
-    this.limit = limit;
+    this.limit = Math.max(1, Number(limit) || 1);
     this.queue = []; // [{ fn, resolve, reject }]
-    this.active = 0;
-    this.listeners = new Set(); // => onChange subscribers
+    this.active = 0; // number of currently running tasks
+    this.listeners = new Set(); // subscribers receive { active, pending }
   }
 
   setLimit(n) {
     this.limit = Math.max(1, Number(n) || 1);
+    this._emit();
   }
 
-  // Register to listen for changes (returns unsubscribe function)
+  // --- Pub/Sub for app-wide overlay ---
   subscribe(cb) {
+    if (typeof cb !== "function") return () => {};
     this.listeners.add(cb);
+    // immediately push current state when subscribing
+    try {
+      cb({ active: this.active, pending: this.queue.length });
+    } catch {}
     return () => this.listeners.delete(cb);
   }
   _emit() {
@@ -24,6 +34,7 @@ class ConcurrencyQueue {
   }
 
   enqueue(fn) {
+    // fn: () => Promise<any>
     return new Promise((resolve, reject) => {
       this.queue.push({ fn, resolve, reject });
       this._runNext();
@@ -35,7 +46,7 @@ class ConcurrencyQueue {
 
     const job = this.queue.shift();
     this.active += 1;
-    this._emit(); // notify task started
+    this._emit(); // task started
 
     (async () => {
       try {
@@ -45,8 +56,8 @@ class ConcurrencyQueue {
         job.reject(e);
       } finally {
         this.active -= 1;
-        this._emit(); // notify task completed
-        this._runNext();
+        this._emit(); // task finished
+        this._runNext(); // continue running if there are available slots
       }
     })();
   }
@@ -62,5 +73,5 @@ class ConcurrencyQueue {
   }
 }
 
-const queue = new ConcurrencyQueue(2);
+const queue = new ConcurrencyQueue(2); // maximum 2 concurrent tasks
 export default queue;

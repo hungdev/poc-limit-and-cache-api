@@ -26,7 +26,6 @@ export default function LoadingOverlay({ show, text = "Loading…" }) {
         }}
       >
         <div
-          className="spinner"
           style={{
             width: 18,
             height: 18,
